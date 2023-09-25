@@ -32,9 +32,3 @@ variable "elb_principal_value" {
   default = "arn:aws:iam::127311923021:root"
 
 }
-
-#variable "alb_bucket_name" {
-#  type = string
-#  default = aws_s3_bucket.alb_log_bucket.name
-#  
-#}

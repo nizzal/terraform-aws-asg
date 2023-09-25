@@ -184,3 +184,35 @@ resource "aws_kms_key" "mykey" {
   description             = "This key is used to encrypt bucket objects"
   deletion_window_in_days = 10
 }
+
+module "alb_s3_logs" {
+  source = "./modules/services/s3"
+
+  alb_logs_bucket_name = "my-alb-logs-bucket-4712-now"
+  elb_principal_value  = "arn:aws:iam::127311923021:root"
+}
+
+module "alb" {
+  source = "./modules/services/alb"
+
+  vpc_id            = aws_vpc.MainVPC.id
+  public_subnet_one = aws_subnet.PublicSubnetOne.id
+  public_subnet_two = aws_subnet.PublicSubnetTwo.id
+  #alb_bucket_id = module.alb_s3_logs.alb_logs_bucket_url
+  alb_bucket_id = module.alb_s3_logs.s3_logs_id
+
+  depends_on = [module.alb_s3_logs]
+}
+
+#module "web_server_asg" {
+#  source = "./modules/services/asg"
+#
+#  vpc_id               = aws_vpc.MainVPC.id
+#  asg_max_size         = 4
+#  asg_min_size         = 1
+#  asg_desired_capacity = 1
+#
+#  amazon_linux_ami  = "ami-08a52ddb321b32a8c"
+#  asg_instance_type = "t2.micro"
+#  asg_instance_key  = "vockey"
+#}
