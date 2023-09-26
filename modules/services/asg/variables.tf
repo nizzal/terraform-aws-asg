@@ -1,5 +1,5 @@
 variable "vpc_id" {
-  type = string
+  type        = string
   description = "VPC id"
 }
 
@@ -30,7 +30,15 @@ variable "asg_instance_type" {
 }
 
 variable "asg_instance_key" {
-  type = string
+  type        = string
   description = "SSH key to access bastion host"
 }
 
+variable "private_subnets" {
+  type = list(string)
+
+}
+
+variable "alb_tg_arn" {
+  type = string
+}

@@ -1,3 +1,43 @@
+resource "aws_security_group" "WebServerSG" {
+  name        = "WebServerSG"
+  description = "Allow basic administration"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "TLS from VPC"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    description = "TLS from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "SSH from VPC"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+  tags = {
+    Name = "WebServerSG"
+  }
+}
+
 resource "aws_launch_template" "WebServerLT" {
   name          = "web-server-launch-template"
   description   = "Web Server ASG Template"
@@ -31,14 +71,14 @@ resource "aws_launch_template" "WebServerLT" {
 
 resource "aws_autoscaling_group" "WebServerASG" {
   name_prefix         = "webserver-asg-"
-  vpc_zone_identifier = [aws_subnet.PrivateSubnetOne.id]
+  vpc_zone_identifier = var.private_subnets
   desired_capacity    = var.asg_desired_capacity
   max_size            = var.asg_max_size
   min_size            = var.asg_min_size
   #wait_for_capacity_timeout = 0
   health_check_type         = "ELB"
   health_check_grace_period = 300
-  target_group_arns         = [aws_alb_target_group.ALB-TG.arn]
+  target_group_arns         = [var.alb_tg_arn]
 
   launch_template {
     id      = aws_launch_template.WebServerLT.id
@@ -46,3 +86,18 @@ resource "aws_autoscaling_group" "WebServerASG" {
   }
 }
 
+
+resource "aws_autoscaling_policy" "autoscaling_policy_webserver" {
+  autoscaling_group_name = aws_autoscaling_group.WebServerASG.name
+  name = "webserver-autoscaling-policy"
+  policy_type = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+
+    target_value = 70.0
+  }
+
+}

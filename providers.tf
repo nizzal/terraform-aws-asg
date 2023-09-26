@@ -8,11 +8,6 @@ terraform {
   required_version = ">= 1.2.0"
 
   backend "s3" {
-    #    bucket         = "tf-remote-backend-5601"
-    #    key            = "state/terraform.tfstate"
-    #    region         = "us-east-1"
-    #    encrypt        = true
-    #    dynamodb_table = "tf-remote-backend"
   }
 }
 

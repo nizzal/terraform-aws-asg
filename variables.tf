@@ -7,20 +7,6 @@ variable "resource_tags" {
   }
 
 }
-variable "amazon_linux_ami" {
-  type    = string
-  default = "ami-08a52ddb321b32a8c"
-}
-
-variable "asg_instance_type" {
-  type    = string
-  default = "t2.micro"
-}
-
-variable "asg_instance_key" {
-  type    = string
-  default = "vockey"
-}
 
 variable "lab_iam_role" {
   type    = string

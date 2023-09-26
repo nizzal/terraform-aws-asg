@@ -110,74 +110,14 @@ resource "aws_route_table_association" "rt_associate_two" {
   route_table_id = aws_route_table.default-rt-one.id
 }
 
-resource "aws_route_table_association" "rt_associate_private_subnet" {
+resource "aws_route_table_association" "rt_associate_private_subnet_one" {
   subnet_id      = aws_subnet.PrivateSubnetOne.id
   route_table_id = aws_route_table.ngw-rt-one.id
 }
 
-resource "aws_security_group" "BastionSG" {
-  name        = "BastionSG"
-  description = "Allow basic administration"
-  vpc_id      = aws_vpc.MainVPC.id
-
-  ingress {
-    description = "SSH from VPC"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-  tags = {
-    Name = "BastionHostSG"
-  }
-}
-
-resource "aws_security_group" "WebServerSG" {
-  name        = "WebServerSG"
-  description = "Allow basic administration"
-  vpc_id      = aws_vpc.MainVPC.id
-
-  ingress {
-    description = "TLS from VPC"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    description = "TLS from VPC"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "SSH from VPC"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-  tags = {
-    Name = "WebServerSG"
-  }
+resource "aws_route_table_association" "rt_associate_private_subnet_two" {
+  subnet_id      = aws_subnet.PrivateSubnetTwo.id
+  route_table_id = aws_route_table.ngw-rt-one.id
 }
 
 resource "aws_kms_key" "mykey" {
@@ -204,15 +144,26 @@ module "alb" {
   depends_on = [module.alb_s3_logs]
 }
 
-#module "web_server_asg" {
-#  source = "./modules/services/asg"
-#
-#  vpc_id               = aws_vpc.MainVPC.id
-#  asg_max_size         = 4
-#  asg_min_size         = 1
-#  asg_desired_capacity = 1
-#
-#  amazon_linux_ami  = "ami-08a52ddb321b32a8c"
-#  asg_instance_type = "t2.micro"
-#  asg_instance_key  = "vockey"
-#}
+module "web_server_asg" {
+  source = "./modules/services/asg"
+
+  vpc_id               = aws_vpc.MainVPC.id
+  asg_max_size         = 4
+  asg_min_size         = 1
+  asg_desired_capacity = 1
+
+  amazon_linux_ami  = "ami-08a52ddb321b32a8c"
+  asg_instance_type = "t2.micro"
+  asg_instance_key  = "vockey"
+  private_subnets   = [aws_subnet.PrivateSubnetOne.id, aws_subnet.PrivateSubnetTwo.id]
+  alb_tg_arn = module.alb.alb_tg_arn
+}
+
+module "ec2_bastion_host" {
+  source = "./modules/services/ec2"
+
+  instance_vpc_id = aws_vpc.MainVPC.id
+  instance_type = "t2.micro"
+  instance_key = "vockey"
+  instance_subnet = aws_subnet.PublicSubnetOne.id
+}
