@@ -55,5 +55,3 @@ data "aws_iam_policy_document" "alb_logs_resource_policy" {
     ]
   }
 }
-
-

@@ -1,143 +1,23 @@
-resource "aws_vpc" "MainVPC" {
-  cidr_block = "10.0.0.0/16"
+module "vpc" {
+  source = "./modules/services/vpc"
 
-  tags = {
-    Name = "MainVPC"
-  }
-}
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.MainVPC.id
-
-  tags = {
-    Name = "main-igw"
-  }
-}
-
-
-resource "aws_eip" "ngw_eip" {
-  domain     = "vpc"
-  depends_on = [aws_internet_gateway.igw]
-}
-
-resource "aws_nat_gateway" "main_ngw" {
-  allocation_id = aws_eip.ngw_eip.id
-  subnet_id     = aws_subnet.PublicSubnetOne.id
-
-  tags = {
-    Name = "NAT GW"
-  }
-
-  depends_on = [aws_internet_gateway.igw]
-}
-
-resource "aws_subnet" "PublicSubnetOne" {
-  vpc_id                  = aws_vpc.MainVPC.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "PublicSubnet1"
-  }
-}
-
-resource "aws_subnet" "PublicSubnetTwo" {
-  vpc_id                  = aws_vpc.MainVPC.id
-  cidr_block              = "10.0.3.0/24"
-  availability_zone       = "us-east-1c"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "PublicSubnet2"
-  }
-}
-
-resource "aws_subnet" "PrivateSubnetOne" {
-  vpc_id            = aws_vpc.MainVPC.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "us-east-1a"
-
-  tags = {
-    Name = "Private Subnet 1"
-  }
-}
-
-resource "aws_subnet" "PrivateSubnetTwo" {
-  vpc_id            = aws_vpc.MainVPC.id
-  cidr_block        = "10.0.4.0/24"
-  availability_zone = "us-east-1c"
-
-  tags = {
-    Name = "Private Subnet 2"
-  }
-}
-
-# route table implementation
-resource "aws_route_table" "default-rt-one" {
-  vpc_id = aws_vpc.MainVPC.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name = "Default-Subnet-RT-One"
-  }
-}
-
-resource "aws_route_table" "ngw-rt-one" {
-  vpc_id = aws_vpc.MainVPC.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_nat_gateway.main_ngw.id
-  }
-
-  tags = {
-    Name = "Private-Subnet-RT-One"
-  }
-}
-
-resource "aws_route_table_association" "rt_associate_one" {
-  subnet_id      = aws_subnet.PublicSubnetOne.id
-  route_table_id = aws_route_table.default-rt-one.id
-}
-
-resource "aws_route_table_association" "rt_associate_two" {
-  subnet_id      = aws_subnet.PublicSubnetTwo.id
-  route_table_id = aws_route_table.default-rt-one.id
-}
-
-resource "aws_route_table_association" "rt_associate_private_subnet_one" {
-  subnet_id      = aws_subnet.PrivateSubnetOne.id
-  route_table_id = aws_route_table.ngw-rt-one.id
-}
-
-resource "aws_route_table_association" "rt_associate_private_subnet_two" {
-  subnet_id      = aws_subnet.PrivateSubnetTwo.id
-  route_table_id = aws_route_table.ngw-rt-one.id
-}
-
-resource "aws_kms_key" "mykey" {
-  description             = "This key is used to encrypt bucket objects"
-  deletion_window_in_days = 10
 }
 
 module "alb_s3_logs" {
   source = "./modules/services/s3"
 
-  alb_logs_bucket_name = "my-alb-logs-bucket-4712-now"
-  elb_principal_value  = "arn:aws:iam::127311923021:root"
+  # alb_logs_bucket_name = "my-alb-logs-bucket-4712-now"
+  # elb_principal_value  = "arn:aws:iam::127311923021:root"
+  alb_logs_bucket_name = var.alb_logs_bucket_name
+  elb_principal_value = var.elb_principal_value
 }
 
 module "alb" {
   source = "./modules/services/alb"
 
-  vpc_id            = aws_vpc.MainVPC.id
-  public_subnet_one = aws_subnet.PublicSubnetOne.id
-  public_subnet_two = aws_subnet.PublicSubnetTwo.id
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_one = module.vpc.aws_public_subnets[0]
+  public_subnet_two = module.vpc.aws_public_subnets[1]
   #alb_bucket_id = module.alb_s3_logs.alb_logs_bucket_url
   alb_bucket_id = module.alb_s3_logs.s3_logs_id
 
@@ -147,23 +27,24 @@ module "alb" {
 module "web_server_asg" {
   source = "./modules/services/asg"
 
-  vpc_id               = aws_vpc.MainVPC.id
+  vpc_id               = module.vpc.vpc_id
   asg_max_size         = 4
   asg_min_size         = 1
-  asg_desired_capacity = 1
+  asg_desired_capacity = 2
 
   amazon_linux_ami  = "ami-08a52ddb321b32a8c"
   asg_instance_type = "t2.micro"
   asg_instance_key  = "vockey"
-  private_subnets   = [aws_subnet.PrivateSubnetOne.id, aws_subnet.PrivateSubnetTwo.id]
+  private_subnets   = module.vpc.aws_private_subnets
   alb_tg_arn = module.alb.alb_tg_arn
+  asg_sg_ports = [80, 443, 22]
 }
 
 module "ec2_bastion_host" {
   source = "./modules/services/ec2"
 
-  instance_vpc_id = aws_vpc.MainVPC.id
+  instance_vpc_id = module.vpc.vpc_id
   instance_type = "t2.micro"
   instance_key = "vockey"
-  instance_subnet = aws_subnet.PublicSubnetOne.id
+  instance_subnet = module.vpc.aws_public_subnets[0]
 }

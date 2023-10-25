@@ -42,3 +42,8 @@ variable "private_subnets" {
 variable "alb_tg_arn" {
   type = string
 }
+
+variable "asg_sg_ports" {
+  type = list(string)
+  description = "List of ports to allow in ASG security groups."
+}

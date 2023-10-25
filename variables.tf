@@ -15,6 +15,10 @@ variable "lab_iam_role" {
 
 variable "elb_principal_value" {
   type    = string
-  default = "arn:aws:iam::127311923021:root"
+  #default = "arn:aws:iam::127311923021:root"
+}
 
+variable "alb_logs_bucket_name" {
+ type    = string
+ #default = "arn:aws:iam::127311923021:root"
 }
