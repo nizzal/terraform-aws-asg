@@ -42,7 +42,7 @@ resource "aws_alb_target_group" "ALB-TG" {
   health_check {
     enabled             = true
     interval            = 30
-    path                = "/index.html"
+    path                = "/"
     matcher             = "200-301"
     protocol            = "HTTP"
     healthy_threshold   = 3
@@ -61,3 +61,9 @@ resource "aws_alb_listener" "webserver_alb_listener" {
   }
 }
 
+resource "aws_ssm_parameter" "alb_endpoint" {
+  name        = "/app/lb"
+  description = "The parameter description"
+  type        = "SecureString"
+  value       = aws_alb.WebServerALB.dns_name
+}

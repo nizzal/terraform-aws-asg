@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "5.13.1"
     }
+    random = {
+      source = "hashicorp/random"
+      version = "3.5.1"
+    }
   }
   required_version = ">= 1.2.0"
 
@@ -17,4 +21,8 @@ provider "aws" {
   default_tags {
     tags = var.resource_tags
   }
+}
+
+provider "random" {
+  
 }

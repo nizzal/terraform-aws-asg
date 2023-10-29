@@ -21,3 +21,7 @@ output "alb_http_url" {
 output "instance_public_ip" {
   value = module.ec2_bastion_host.instance_public_ip
 }
+
+output "rds_instance_endpoint" {
+  value = module.rds_instance.rds-endpoint
+}

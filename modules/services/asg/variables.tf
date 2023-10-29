@@ -47,3 +47,7 @@ variable "asg_sg_ports" {
   type = list(string)
   description = "List of ports to allow in ASG security groups."
 }
+
+variable "iam_role" {
+  type = string
+}

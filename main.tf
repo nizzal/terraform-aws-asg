@@ -29,7 +29,7 @@ module "web_server_asg" {
 
   vpc_id               = module.vpc.vpc_id
   asg_max_size         = 4
-  asg_min_size         = 1
+  asg_min_size         = 2
   asg_desired_capacity = 2
 
   amazon_linux_ami  = "ami-08a52ddb321b32a8c"
@@ -38,6 +38,7 @@ module "web_server_asg" {
   private_subnets   = module.vpc.aws_private_subnets
   alb_tg_arn = module.alb.alb_tg_arn
   asg_sg_ports = [80, 443, 22]
+  iam_role = "LabInstanceProfile" # set the IAM role that has access to AWS SSM to get cred for RDS
 }
 
 module "ec2_bastion_host" {
@@ -47,4 +48,15 @@ module "ec2_bastion_host" {
   instance_type = "t2.micro"
   instance_key = "vockey"
   instance_subnet = module.vpc.aws_public_subnets[0]
+}
+
+module "rds_instance" {
+  source = "./modules/services/rds"
+
+  multi_az = true
+  rds_user = "admin"
+  instance_class = "db.t3.micro"
+  vpc_id = module.vpc.vpc_id
+  private_subnets = module.vpc.aws_private_subnets
+  web_server_sg_id = module.web_server_asg.web_server_sg
 }

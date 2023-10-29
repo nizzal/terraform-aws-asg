@@ -25,10 +25,26 @@ resource "aws_security_group" "WebServerSG" {
   }
 }
 
+data "aws_ami" "ubuntu" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"] # Canonical
+}
+
 resource "aws_launch_template" "WebServerLT" {
   name          = "web-server-launch-template"
   description   = "Web Server ASG Template"
-  image_id      = var.amazon_linux_ami
+  image_id      = data.aws_ami.ubuntu.id
   instance_type = var.asg_instance_type
   key_name      = var.asg_instance_key
 
@@ -48,10 +64,14 @@ resource "aws_launch_template" "WebServerLT" {
     enabled = true
   }
 
+  iam_instance_profile {
+    name = var.iam_role
+  }
+
   tag_specifications {
     resource_type = "instance"
     tags = {
-      Name = "WebServer-LT"
+      Name = "WebServer-LT-new"
     }
   }
 }
@@ -70,6 +90,11 @@ resource "aws_autoscaling_group" "WebServerASG" {
   launch_template {
     id      = aws_launch_template.WebServerLT.id
     version = "$Latest"
+  }
+
+  instance_refresh {
+    strategy = "Rolling"
+    triggers = ["tag"]
   }
 }
 

@@ -1,17 +1,32 @@
 #!/bin/bash
-yum update -y
-yum install -y httpd
 
-# Start the httpd service
-service httpd start
-chkconfig httpd on
+for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do apt-get remove $pkg; done
 
-# Get instance metadata
-INSTANCE_ID=$(TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"` \
-&& curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/instance-id)
-AVAILABILITY_ZONE=$(TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"` \
-&& curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/placement/availability-zone)
+# Add Docker's official GPG key:
+apt-get update -y
+apt-get install ca-certificates curl gnupg -y
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
 
-# Create the default response HTML file
-echo "<html><body><h1>Hello from $INSTANCE_ID in $AVAILABILITY_ZONE.</h1></body></html>" > /var/www/html/index.html
+# Add the repository to Apt sources:
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt-get update -y
 
+apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin python3-pip -y
+
+
+pip3 install awscli
+
+cd ~
+if [ -d "django-registration-and-login-system" ]; then
+  rm -rf django-registration-and-login-system
+fi
+git clone https://github.com/nizzal398/django-registration-and-login-system
+cd django-registration-and-login-system
+git checkout develop
+
+sh deploy.sh
